@@ -1042,7 +1042,7 @@ export default function HolyFlockFilms() {
 
   return (
     <div className="fixed inset-0 w-full h-full text-[#ede1c8] overflow-hidden"
-      style={{ backgroundColor: "#ede1c8", fontFamily: '"Spectral", "Cormorant Garamond", Georgia, serif' }}
+      style={{ backgroundColor: "#0a0908", fontFamily: '"Spectral", "Cormorant Garamond", Georgia, serif' }}
       data-cursor="default">
 
       <style>{`
