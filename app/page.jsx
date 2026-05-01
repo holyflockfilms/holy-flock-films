@@ -492,18 +492,26 @@ function CanvasNavigator({ onOpenCluster, dragMode, setDragMode }) {
 
     let raf;
     let vw = window.innerWidth, vh = window.innerHeight;
-    // Canvas is 1.5× viewport. Pan range: 0 to -0.5*viewport. Centered: -0.25*viewport.
+    // Canvas is 1.5× viewport, but content inside is then scaled.
+    // Pan bounds need to track the *scaled* content area, not the unscaled box.
     const SCALE = 1.5;
-    const canvasW = () => vw * SCALE;
-    const canvasH = () => vh * SCALE;
+    const getScale = () => Math.max(0.5, Math.min(1.2, vw / 1920));
+    const contentW = () => vw * SCALE * getScale();
+    const contentH = () => vh * SCALE * getScale();
+    // Pan from 0 (content top-left at viewport top-left) to -(contentSize - viewport)
+    // If content is smaller than viewport, pan range collapses (no panning needed/possible)
     const maxPanX = 0;
-    const minPanX = () => -(canvasW() - vw); // i.e. -0.5*vw
+    const minPanX = () => Math.min(0, -(contentW() - vw));
     const maxPanY = 0;
-    const minPanY = () => -(canvasH() - vh); // i.e. -0.5*vh
+    const minPanY = () => Math.min(0, -(contentH() - vh));
+
+    // Centre the content initially
+    const initialPanX = () => -(contentW() - vw) / 2;
+    const initialPanY = () => -(contentH() - vh) / 2;
 
     const state = {
-      pan: { x: -vw * 0.25, y: -vh * 0.25 },
-      target: { x: -vw * 0.25, y: -vh * 0.25 },
+      pan: { x: initialPanX(), y: initialPanY() },
+      target: { x: initialPanX(), y: initialPanY() },
       velocity: { x: 0, y: 0 },
       isDragging: false,
       dragStart: null,
@@ -602,25 +610,31 @@ function CanvasNavigator({ onOpenCluster, dragMode, setDragMode }) {
 
       canvas.style.transform = `translate3d(${state.pan.x.toFixed(2)}px, ${state.pan.y.toFixed(2)}px, 0)`;
 
-      // Cluster proximity
+      // Compute a scale factor based on viewport width, clamped sensibly.
+      // 1920px wide = 1.0 (reference). Smaller viewports scale down, larger scale up.
+      const scale = Math.max(0.5, Math.min(1.2, vw / 1920));
+      document.documentElement.style.setProperty("--cluster-scale", scale.toFixed(3));
+
+      // Cluster proximity (in unscaled canvas coordinates, but compare against scaled positions)
       const cursorCanvasX = state.cursor.x - state.pan.x;
       const cursorCanvasY = state.cursor.y - state.pan.y;
       const els = canvas.querySelectorAll("[data-cluster]");
       els.forEach((el) => {
         const fx = parseFloat(el.dataset.fx);
         const fy = parseFloat(el.dataset.fy);
-        const cx = fx * vw * SCALE;
-        const cy = fy * vh * SCALE;
+        // Cluster's visual position on canvas after the scale transform
+        const cx = fx * vw * SCALE * scale;
+        const cy = fy * vh * SCALE * scale;
         const dx = cursorCanvasX - cx;
         const dy = cursorCanvasY - cy;
         const dist = Math.hypot(dx, dy);
-        // Wider radius for the larger clusters
-        const prox = Math.max(0, Math.min(1, 1 - dist / 540));
-        // Smoothstep for nicer falloff
+        // Proximity radius scales too, so magnet field matches visual cluster size
+        const prox = Math.max(0, Math.min(1, 1 - dist / (540 * scale)));
         const proxSmooth = prox * prox * (3 - 2 * prox);
         el.style.setProperty("--prox", proxSmooth.toFixed(3));
-        el.style.setProperty("--cdx", dx.toFixed(0));
-        el.style.setProperty("--cdy", dy.toFixed(0));
+        // Pass cursor offset back through inverse scale so card pull math works at any zoom
+        el.style.setProperty("--cdx", (dx / scale).toFixed(0));
+        el.style.setProperty("--cdy", (dy / scale).toFixed(0));
       });
 
       // Bottom nav reveal
@@ -661,10 +675,16 @@ function CanvasNavigator({ onOpenCluster, dragMode, setDragMode }) {
       <div ref={canvasRef}
         className="absolute top-0 left-0"
         style={{ width: "150vw", height: "150vh", willChange: "transform" }}>
-        <DoodleBG />
-        {CLUSTERS.map((cluster) => (
-          <ClusterCanvas key={cluster.id} cluster={cluster} onOpen={onOpenCluster} />
-        ))}
+        <div style={{
+          width: "100%", height: "100%",
+          transform: "scale(var(--cluster-scale, 1))",
+          transformOrigin: "0 0",
+        }}>
+          <DoodleBG />
+          {CLUSTERS.map((cluster) => (
+            <ClusterCanvas key={cluster.id} cluster={cluster} onOpen={onOpenCluster} />
+          ))}
+        </div>
       </div>
     </div>
   );
