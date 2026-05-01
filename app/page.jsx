@@ -897,7 +897,7 @@ function ManifestoOverlay({ onClose }) {
         <div className="flex items-start justify-between mb-12">
           <div>
             <p className="text-[#c9a961] text-[10px] tracking-[0.4em] mb-4"
-              style={{ fontFamily: '"Cinzel", serif' }}>I — MONKEY</p>
+              style={{ fontFamily: '"Cinzel", serif' }}>I — MANIFESTO</p>
             <h2 className="text-4xl md:text-6xl text-[#ede1c8]"
               style={{ font: '500 1em "Cinzel", serif', letterSpacing: "0.04em" }}>
               WHAT WE BELIEVE.
@@ -988,7 +988,7 @@ function ContactOverlay({ onClose }) {
 
 function BottomNav({ onSection }) {
   const items = [
-    { label: "MONKEY", action: () => onSection("manifesto") },
+    { label: "MANIFESTO", action: () => onSection("manifesto") },
     { label: "FILMS",     action: () => onSection(null) },
     { label: "SCORES",    action: () => onSection("scores") },
     { label: "WRITE",     action: () => onSection("contact") },
