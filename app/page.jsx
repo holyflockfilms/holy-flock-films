@@ -78,13 +78,13 @@ const CLUSTERS = [
   },
   {
     id: "v", numeral: "V",
-    title: "Vespers", year: "MMXXVI", runtime: "—", format: "in production",
+    title: "The Last Hurrah", year: "MMXXVI", runtime: "—", format: "in production",
     synopsis: "[working title] A choir of farmers gathers each evening to sing the day's losses.",
     note: "in production — Snowdonia, spring",
     palette: { from: "#3a2a4a", to: "#0a0908", accent: "#c8a3d8" },
     pos: { x: 0.52, y: 0.78 },
     cards: [
-      { kind: "poster",    w: 300, dx:    0, dy:    0, rot:  -5, spread: [ 0.0,  0.0] },
+      { kind: "poster", img: "/films/long-field/The_Last_Hurrah_poster.jpg", w: 300, dx: 0, dy: 0, rot: -5, spread: [0.0, 0.0] },
       { kind: "landscape", w: 315, dx: -105, dy:  -78, rot:   6, spread: [-1.0, -0.6] },
       { kind: "closeup",   w: 280, dx:  108, dy:  -70, rot:  -3, spread: [ 1.0, -0.5] },
       { kind: "frame",     w: 295, dx:   88, dy:  102, rot:   7, spread: [ 0.7,  0.7] },
@@ -492,20 +492,18 @@ function CanvasNavigator({ onOpenCluster, dragMode, setDragMode }) {
 
     let raf;
     let vw = window.innerWidth, vh = window.innerHeight;
-    // Canvas is 1.5× viewport, but content inside is then scaled.
-    // Pan bounds need to track the *scaled* content area, not the unscaled box.
+    // Canvas is 1.5× viewport, content scales inside it.
+    // Pan bounds track the *scaled* content area.
     const SCALE = 1.5;
-    const getScale = () => Math.max(0.5, Math.min(1.2, vw / 1920));
+    const getScale = () => Math.max(0.7, Math.min(1.3, vw / 1440));
     const contentW = () => vw * SCALE * getScale();
     const contentH = () => vh * SCALE * getScale();
-    // Pan from 0 (content top-left at viewport top-left) to -(contentSize - viewport)
-    // If content is smaller than viewport, pan range collapses (no panning needed/possible)
     const maxPanX = 0;
     const minPanX = () => Math.min(0, -(contentW() - vw));
     const maxPanY = 0;
     const minPanY = () => Math.min(0, -(contentH() - vh));
 
-    // Centre the content initially
+    // Centre content initially
     const initialPanX = () => -(contentW() - vw) / 2;
     const initialPanY = () => -(contentH() - vh) / 2;
 
@@ -610,29 +608,28 @@ function CanvasNavigator({ onOpenCluster, dragMode, setDragMode }) {
 
       canvas.style.transform = `translate3d(${state.pan.x.toFixed(2)}px, ${state.pan.y.toFixed(2)}px, 0)`;
 
-      // Compute a scale factor based on viewport width, clamped sensibly.
-      // 1920px wide = 1.0 (reference). Smaller viewports scale down, larger scale up.
-      const scale = Math.max(0.5, Math.min(1.2, vw / 1920));
+      // Compute scale based on viewport. Reference width 1440 (typical Mac browser).
+      // Clamp wider on the small side so laptops don't shrink things to oblivion.
+      const scale = Math.max(0.7, Math.min(1.3, vw / 1440));
       document.documentElement.style.setProperty("--cluster-scale", scale.toFixed(3));
 
-      // Cluster proximity (in unscaled canvas coordinates, but compare against scaled positions)
+      // Cluster proximity (positions in canvas coordinates, account for inner scale)
       const cursorCanvasX = state.cursor.x - state.pan.x;
       const cursorCanvasY = state.cursor.y - state.pan.y;
       const els = canvas.querySelectorAll("[data-cluster]");
       els.forEach((el) => {
         const fx = parseFloat(el.dataset.fx);
         const fy = parseFloat(el.dataset.fy);
-        // Cluster's visual position on canvas after the scale transform
         const cx = fx * vw * SCALE * scale;
         const cy = fy * vh * SCALE * scale;
         const dx = cursorCanvasX - cx;
         const dy = cursorCanvasY - cy;
         const dist = Math.hypot(dx, dy);
-        // Proximity radius scales too, so magnet field matches visual cluster size
+        // Magnet radius scales with cards
         const prox = Math.max(0, Math.min(1, 1 - dist / (540 * scale)));
         const proxSmooth = prox * prox * (3 - 2 * prox);
         el.style.setProperty("--prox", proxSmooth.toFixed(3));
-        // Pass cursor offset back through inverse scale so card pull math works at any zoom
+        // Inverse-scale the cursor offset so card pull feels right at any zoom
         el.style.setProperty("--cdx", (dx / scale).toFixed(0));
         el.style.setProperty("--cdy", (dy / scale).toFixed(0));
       });
